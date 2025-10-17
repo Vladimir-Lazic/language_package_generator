@@ -1,0 +1,4 @@
+*.srt
+*.docx
+.venv/
+.vscode/
