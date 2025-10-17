@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
+import argparse
 import sys
 import re
 from pathlib import Path
 from docx import Document
 from docx.oxml.shared import OxmlElement, qn
+from googletrans import Translator
 
 def set_table_borders_black(table):
     """Apply black borders to the Word table."""
@@ -27,16 +29,21 @@ def parse_srt(srt_content):
     )
     return pattern.findall(srt_content)
 
-def create_docx(blocks, output_path):
+def create_docx(blocks, output_path, langs):
     """Generate the DOCX file with a table."""
     doc = Document()
     doc.add_heading('Dialogue List', level=1)
 
-    table = doc.add_table(rows=1, cols=3)
+    # Table columns: Timecode + len(langs) + English
+    num_cols = 2 + len(langs)
+    table = doc.add_table(rows=1, cols=num_cols)
     hdr_cells = table.rows[0].cells
     hdr_cells[0].text = 'Timecode'
-    hdr_cells[1].text = 'German'
-    hdr_cells[2].text = 'English'
+    for idx, lang in enumerate(langs):
+        hdr_cells[1 + idx].text = lang.capitalize()
+    hdr_cells[-1].text = 'English'
+
+    translator = Translator() if langs else None
 
     for _, start, end, text in blocks:
         start_time = start.split(',')[0]
@@ -46,35 +53,42 @@ def create_docx(blocks, output_path):
 
         row_cells = table.add_row().cells
         row_cells[0].text = timecode
-        row_cells[1].text = ''
-        row_cells[2].text = subtitle_text
+
+        for idx, lang_code in enumerate(langs):
+            if translator:
+                try:
+                    translated = translator.translate(subtitle_text, dest=lang_code).text
+                except Exception:
+                    translated = ''
+            else:
+                translated 
+            row_cells[1 + idx].text = translated
+        row_cells[-1].text = subtitle_text
 
     set_table_borders_black(table)
     doc.save(output_path)
 
 def main():
-    if len(sys.argv) < 2 or len(sys.argv) > 3:
-        print("Usage: python srt_to_docx.py input_file.srt [output_file.docx]")
-        sys.exit(1)
-
-    input_path = Path(sys.argv[1])
-    if not input_path.exists():
-        print(f"❌ Error: File not found -> {input_path}")
-        sys.exit(1)
-
-    # Default output name if not specified
-    if len(sys.argv) == 3:
-        output_path = Path(sys.argv[2])
-    else:
+    parser = argparse.ArgumentParser(description="Convert SRT to DOCX with optional translations")
+    parser.add_argument('input', help='Path to input .srt file')
+    parser.add_argument('output', nargs='?', help='Path to output .docx file (optional)')
+    parser.add_argument('--langs', nargs='*', default=[], help='Language codes to translate to (e.g. de fr es)')
+    
+    args = parser.parse_args()
+    
+    input_path = Path(args.input)
+    if not args.output:
         output_path = input_path.with_suffix('.docx')
+    else:
+        output_path = Path(args.output)
 
     # Read SRT
     with input_path.open('r', encoding='utf-8') as f:
         srt_content = f.read()
+    
+    subtitles = parse_srt(srt_content)
+    create_docx(subtitles, output_path, args.langs)
 
-    # Convert and export
-    blocks = parse_srt(srt_content)
-    create_docx(blocks, output_path)
     print(f"✅ DOCX file created: {output_path}")
 
 if __name__ == "__main__":
