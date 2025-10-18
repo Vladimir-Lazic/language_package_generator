@@ -6,7 +6,6 @@ from translator.srt_parser import parse_srt
 from translator.translator_service import translate_lines
 from translator.srt_writer import write_srt
 from translator.docx_writer import write_docx
-from translator.ai_polisher import polish_texts
 
 
 def process_language(input_path, input_language, output_language, original_subs):
@@ -21,8 +20,6 @@ def main():
     parser.add_argument('--input_file', required=True, help="Path to the input SRT file")
     parser.add_argument('--input_language', required=True, help="Source language code (e.g. en)")
     parser.add_argument('--output_languages', nargs='+', required=True, help="Target languages")
-    parser.add_argument('--ai_polish', action='store_true', help="Run AI overview on all translations")
-
     args = parser.parse_args()
 
     input_path = Path(args.input_file)
@@ -43,17 +40,6 @@ def main():
             lang_code, subs = f.result()
             translations[lang_code] = subs
     print("✨ Translating. Done")
-
-    # AI polish each in-memory buffer if requested
-    if args.ai_polish and OpenAI is not None:
-        print("🤖 AI polishing. Started")
-        for lang_code, subs in list(translations.items()):
-            polished = polish_texts(subs, language=lang_code)
-            translations[lang_code] = polished
-            print(f"🤖 AI polished: {lang_code}")
-        print("🤖 AI polishing. Done")
-    else:
-        print("🤖 AI polishing skipped")
 
     # Write SRT files from polished buffers
     for lang_code, subs in translations.items():

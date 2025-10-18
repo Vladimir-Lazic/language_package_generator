@@ -10,4 +10,3 @@ def translate_lines(subtitles, src_lang, dest_lang):
             text = ''
         translated.append({'start': s['start'], 'end': s['end'], 'text': text})
     return translated
-
