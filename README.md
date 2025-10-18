@@ -23,7 +23,7 @@ The project includes a modern, user-friendly GUI built with PySide6 for easy ope
 2.  Launch the GUI:
 
 ```bash
-python ui/main_window.py
+python ui_main.py
 ```
 
 ### Use the interface
